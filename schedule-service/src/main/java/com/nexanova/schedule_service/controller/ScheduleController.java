@@ -30,4 +30,8 @@ public class ScheduleController {
         return  scheduleService.assignSlot(slotId,request.getTrainerId(),request.getModuleId());
     }
 
+    @GetMapping("/{weekId}")
+    public WeeklySchedule getSchedule(@PathVariable Long weekId) {
+        return scheduleService.getScheduleById(weekId);
+    }
 }

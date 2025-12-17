@@ -64,4 +64,9 @@ public class ScheduleService {
             throw  new RuntimeException("Slot not Found Id "+slotId);
         }
     }
+
+    public WeeklySchedule getScheduleById(Long id) {
+        return scheduleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Schedule not found with ID: " + id));
+    }
 }
