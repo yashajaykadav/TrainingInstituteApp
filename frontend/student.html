@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Timetable</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; }
+        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
+        .card { border-left: 5px solid #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="d-flex justify-content-between container align-items-center">
+        <h1>📅 My Timetable</h1>
+        <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+    </div>
+    <p>Welcome, <span id="user-display">Student</span></p>
+</div>
+
+<div class="container mt-4">
+    <div class="row" id="timetable-container">
+        <div class="col-12 text-center mt-5"><div class="spinner-border text-primary"></div><p>Loading...</p></div>
+    </div>
+</div>
+
+<script>
+    const GATEWAY_URL = "http://localhost:8090";
+    const token = localStorage.getItem("jwt_token");
+    const username = localStorage.getItem("username");
+
+    // ⚠️ HARDCODED ID for Demo purposes (In real app, extract ID from Token)
+    const STUDENT_ID = 102; 
+
+    if (!token) window.location.href = "login.html"; // Protect Page
+    document.getElementById('user-display').innerText = username;
+
+    function logout() { localStorage.clear(); window.location.href = "login.html"; }
+
+    async function fetchTimetable() {
+        try {
+            const response = await fetch(`${GATEWAY_URL}/api/timetable/student/${STUDENT_ID}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` } // Auth Header
+            });
+
+            if (!response.ok) throw new Error("Failed to fetch");
+
+            const slots = await response.json();
+            renderTimetable(slots);
+        } catch (error) {
+            document.getElementById('timetable-container').innerHTML = 
+                `<div class="alert alert-danger text-center">Error loading timetable. Ensure backend is running.</div>`;
+        }
+    }
+
+    function renderTimetable(slots) {
+        const container = document.getElementById('timetable-container');
+        container.innerHTML = "";
+
+        if (slots.length === 0) {
+            container.innerHTML = `<div class="alert alert-warning text-center">No classes scheduled.</div>`;
+            return;
+        }
+
+        // Sort by Day (Mon-Sun)
+        const days = { "MONDAY": 1, "TUESDAY": 2, "WEDNESDAY": 3, "THURSDAY": 4, "FRIDAY": 5, "SATURDAY": 6, "SUNDAY": 7 };
+        slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
+
+        slots.forEach(slot => {
+            const card = `
+                <div class="col-md-4">
+                    <div class="card p-3 mb-3 shadow-sm">
+                        <h5 class="text-primary">${slot.dayOfWeek}</h5>
+                        <h6 class="text-muted">⏰ ${slot.startTime} - ${slot.endTime}</h6>
+                        <hr>
+                        <p class="mb-1"><strong>Module ID:</strong> ${slot.moduleId}</p>
+                        <p class="mb-0"><strong>Trainer ID:</strong> ${slot.trainerId}</p>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+    }
+
+    fetchTimetable();
+</script>
+</body>
+</html>

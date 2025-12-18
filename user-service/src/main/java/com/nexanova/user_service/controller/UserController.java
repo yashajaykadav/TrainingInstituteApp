@@ -1,13 +1,13 @@
 package com.nexanova.user_service.controller;
 
 
+import com.nexanova.user_service.entity.User;
 import com.nexanova.user_service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -25,4 +25,9 @@ public class UserController {
         return "Users Uploaded and registered successfully";
     }
 
+    // Check if you have this method. If not, ADD IT inside the class:
+    @GetMapping
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
+    }
 }

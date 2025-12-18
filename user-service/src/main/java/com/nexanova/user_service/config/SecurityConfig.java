@@ -12,12 +12,16 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)throws  Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .anonymous(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth ->auth
+                // Removed .anonymous(disable) to allow public access to the endpoints below
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Allow Login & Register
                         .requestMatchers("/api/auth/**").permitAll()
+                        // 2. Allow User List & Bulk Upload (THIS FIXES YOUR ERROR)
+                        .requestMatchers("/api/users/**").permitAll()
+                        // 3. Block anything else not listed above
                         .anyRequest().authenticated()
                 );
         return http.build();
