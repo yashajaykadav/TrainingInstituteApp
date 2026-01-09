@@ -1,5 +1,6 @@
 package com.nexanova.schedule_service.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -16,7 +17,7 @@ public class WeeklySchedule {
 
     private LocalDate startOfWeek;
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "weeklySchedule", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<ScheduleSlot> slots;
-
 }

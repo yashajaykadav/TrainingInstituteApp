@@ -26,9 +26,15 @@ public class CourseController {
         return courseService.getAllCourses();
     }
 
+    @GetMapping("/{courseId}/modules")
+    public List<Module> getModules(@PathVariable Long courseId){
+        return courseService.getModuleByCourseId(courseId);
+    }
+
     @PostMapping("/{courseId}/modules")
     public Module addmodule(@PathVariable Long courseId,@RequestBody Module module){
         return courseService.addModuleToCourse(courseId,module);
     }
+
 
 }

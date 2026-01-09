@@ -1,138 +1,78 @@
-version: '3.8'
-
+# Yash Kadav | yashkadav52@gmail.com
 services:
-  # ==========================================
-  # 1. USER SERVICE & DATABASE
-  # ==========================================
-  mysql-user:
+  db:
     image: mysql:8.0
+    container_name: training-db
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: user_db
-    ports:
-      - "3307:3306" # Maps container port 3306 to host 3307 to avoid conflict
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - training-net
 
-  user-service:
-    build: ./user_service
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8090:8090"
+    networks:
+      - training-net
+
+  course-service:
+    build: ./course-service
     ports:
       - "8081:8081"
     environment:
-      # Override localhost with container name
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/user_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/course_db
     depends_on:
-      - mysql-user
+      - db
+    networks:
+      - training-net
 
-  # ==========================================
-  # 2. COURSE SERVICE & DATABASE
-  # ==========================================
-  mysql-course:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: course_db
-    ports:
-      - "3308:3306"
-
-  course-service:
-    build: ./course_service
+  enrollment-service:
+    build: ./enrollment-service
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-course:3306/course_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/enrollment_db
     depends_on:
-      - mysql-course
-
-  # ==========================================
-  # 3. SCHEDULE SERVICE & DATABASE
-  # ==========================================
-  mysql-schedule:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: schedule_db
-    ports:
-      - "3309:3306"
+      - db
+    networks:
+      - training-net
 
   schedule-service:
-    build: ./schedule_service
+    build: ./schedule-service
     ports:
       - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-schedule:3306/schedule_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/schedule_db
     depends_on:
-      - mysql-schedule
+      - db
+    networks:
+      - training-net
 
-  # ==========================================
-  # 4. ENROLLMENT SERVICE & DATABASE
-  # ==========================================
-  mysql-enrollment:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: enrollment_db
-    ports:
-      - "3310:3306"
-
-  enrollment-service:
-    build: ./enrollment_service
+  timetable-service:
+    build: ./timetable-service
     ports:
       - "8084:8084"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-enrollment:3306/enrollment_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/training_management_db
     depends_on:
-      - mysql-enrollment
+      - db
+    networks:
+      - training-net
 
-  # ==========================================
-  # 5. TIMETABLE SERVICE & DATABASE
-  # ==========================================
-  mysql-timetable:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: timetable_db
-    ports:
-      - "3311:3306"
-
-  timetable-service:
-    build: ./timetable_service
+  user-service:
+    build: ./user-service
     ports:
       - "8085:8085"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-timetable:3306/timetable_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      # Update Service URLs to use container names instead of localhost
-      enrollment-service-url: http://enrollment-service:8084
-      schedule-service-url: http://schedule-service:8083
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/user_db
     depends_on:
-      - mysql-timetable
+      - db
+    networks:
+      - training-net
 
-  # ==========================================
-  # 6. API GATEWAY
-  # ==========================================
-  api-gateway:
-    build: ./api_gateway
-    ports:
-      - "8090:8090"
-    environment:
-      # We must update the routes to point to Docker containers
-      # Syntax: Name in caps + _HOST
-      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://user-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://course-service:8082
-      SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://schedule-service:8083
-      SPRING_CLOUD_GATEWAY_ROUTES_3_URI: http://enrollment-service:8084
-      SPRING_CLOUD_GATEWAY_ROUTES_4_URI: http://timetable-service:8085
-    depends_on:
-      - user-service
-      - course-service
-      - schedule-service
-      - enrollment-service
-      - timetable-service
+networks:
+  training-net:

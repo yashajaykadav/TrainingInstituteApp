@@ -19,36 +19,73 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public User registerUser(User user){
-        if(userRepository.findByUsername(user.getUsername()).isPresent()){
+    public User registerUser(User user) {
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        if (user.getRole() == null || user.getRole().isEmpty()) {
+            user.setRole("STUDENT");
+        }
         return userRepository.save(user);
     }
 
-    public boolean verifyUser(String username , String rawPassword){
-        Optional<User> user  = userRepository.findByUsername(username);
-
+    public boolean verifyUser(String username, String rawPassword) {
+        Optional<User> user = userRepository.findByUsername(username);
         return user.filter(value -> passwordEncoder.matches(rawPassword, value.getPassword())).isPresent();
     }
 
-    public void saveUserFromCsv(MultipartFile file){
+    public void saveUserFromCsv(MultipartFile file) {
         List<User> users = CSVHelper.parseUserService(file);
-        for(User user : users){
-            String rawPassword = (user.getPassword()==null || user.getPassword().isEmpty())
-                    ? "Default@123" : user.getPassword();
+
+        System.out.println("Bulk Upload: Found " + users.size() + " users in CSV file.");
+
+        for (User user : users) {
+            System.out.println("Processing user: " + user.getUsername());
+
+            if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+                System.out.println("Skipping duplicate: " + user.getUsername());
+                continue;
+            }
+
+            String rawPassword = (user.getPassword() == null || user.getPassword().isEmpty())
+                    ? "Default@123"
+                    : user.getPassword();
             user.setPassword(passwordEncoder.encode(rawPassword));
 
-            if(user.getRole()==null || user.getRole().isEmpty()){
+            if (user.getRole() == null || user.getRole().isEmpty()) {
                 user.setRole("STUDENT");
             }
-        }
 
-        userRepository.saveAll(users);
+            userRepository.save(user);
+        }
     }
+
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
+    }
+
+    public List<User> getTrainers() {
+        return userRepository.findByRole("TRAINER");
+    }
+
+    public List<User> getStudents() {
+        return userRepository.findByRole("STUDENT");
+    }
+
+    public String getRole(String username) {
+        return userRepository.findByUsername(username)
+                .map(User::getRole)
+                .orElse("STUDENT");
+    }
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+    public User getUserDetails(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

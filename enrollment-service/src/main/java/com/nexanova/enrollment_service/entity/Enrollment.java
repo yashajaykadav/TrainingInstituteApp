@@ -1,6 +1,5 @@
 package com.nexanova.enrollment_service.entity;
 
-
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name="enrollments")
+@Table(name = "enrollments")
 public class Enrollment {
 
     @Id
@@ -17,7 +16,6 @@ public class Enrollment {
 
     private Long studentId;
     private Long courseId;
-
 
     public Enrollment(Long studentId, Long courseId) {
         this.studentId = studentId;

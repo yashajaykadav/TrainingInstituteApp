@@ -1,6 +1,5 @@
 package com.nexanova.user_service.controller;
 
-
 import com.nexanova.user_service.entity.User;
 import com.nexanova.user_service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,15 +16,24 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/bulk-upload")
-    public String uploadBulkUser(@RequestParam("file")MultipartFile file){
-        if(file.isEmpty()){
-            return "Please Upload Valid File";
-        }
+    public String uploadBulkUser(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) return "Invalid File";
         userService.saveUserFromCsv(file);
-        return "Users Uploaded and registered successfully";
+        return "Bulk upload successful";
     }
 
-    // Check if you have this method. If not, ADD IT inside the class:
+    // Rule: Admin needs to see list of Trainers
+    @GetMapping("/trainers")
+    public List<User> getTrainers() {
+        return userService.getTrainers();
+    }
+
+    // Rule: Admin needs to see list of Students
+    @GetMapping("/students")
+    public List<User> getStudents() {
+        return userService.getStudents();
+    }
+
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();

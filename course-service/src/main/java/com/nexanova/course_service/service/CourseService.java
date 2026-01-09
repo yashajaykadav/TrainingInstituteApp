@@ -28,6 +28,10 @@ public class CourseService {
         return courseRepository.findAll();
     }
 
+    public List<Module> getModuleByCourseId(Long courseId){
+        return moduleRepository.findByCourseId(courseId);
+    }
+
     public Module addModuleToCourse(Long courseId,Module module){
         Optional<Course> courseOptional = courseRepository.findById(courseId);
 

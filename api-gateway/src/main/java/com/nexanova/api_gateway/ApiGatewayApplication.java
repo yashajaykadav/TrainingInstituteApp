@@ -20,7 +20,7 @@ public class ApiGatewayApplication {
 	@Bean
 	public CorsWebFilter corsWebFilter() {
 		CorsConfiguration corsConfig = new CorsConfiguration();
-		corsConfig.setAllowedOrigins(List.of("*")); // Allow ALL origins (Frontend)
+		corsConfig.setAllowedOrigins(List.of("*"));
 		corsConfig.setMaxAge(3600L);
 		corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
 		corsConfig.addAllowedHeader("*");

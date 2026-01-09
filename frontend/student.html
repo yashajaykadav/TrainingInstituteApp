@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <title>Student Timetable</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; }
-        .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
-        .card { border-left: 5px solid #007bff; }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .header { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .card { border: none; border-left: 5px solid #6c5ce7; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -15,77 +17,145 @@
 <div class="header">
     <div class="d-flex justify-content-between container align-items-center">
         <h1>📅 My Timetable</h1>
-        <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+        <button class="btn btn-light btn-sm text-primary fw-bold" onclick="logout()">Logout</button>
     </div>
-    <p>Welcome, <span id="user-display">Student</span></p>
+    <p class="mb-0">Welcome, <span id="user-display" class="fw-bold">Student</span></p>
 </div>
 
 <div class="container mt-4">
     <div class="row" id="timetable-container">
-        <div class="col-12 text-center mt-5"><div class="spinner-border text-primary"></div><p>Loading...</p></div>
+        <div class="col-12 text-center mt-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2 text-muted">Loading your schedule...</p>
+        </div>
     </div>
 </div>
 
 <script>
     const GATEWAY_URL = "http://localhost:8090";
+    
+    // --- 1. Helper Function (Fixed: Added here) ---
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) { return null; }
+    }
+
+    // --- 2. Auth Check ---
     const token = localStorage.getItem("jwt_token");
+    const userId = localStorage.getItem("user_id");
     const username = localStorage.getItem("username");
 
-    // ⚠️ HARDCODED ID for Demo purposes (In real app, extract ID from Token)
-    const STUDENT_ID = 102; 
+    // If missing token or user_id, force logout
+    if (!token || !userId) {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+    
+    document.getElementById('user-display').innerText = username || "Student";
 
-    if (!token) window.location.href = "login.html"; // Protect Page
-    document.getElementById('user-display').innerText = username;
+    function logout() { 
+        localStorage.clear(); 
+        window.location.href = "login.html"; 
+    }
 
-    function logout() { localStorage.clear(); window.location.href = "login.html"; }
+    // --- 3. API Helper ---
+    async function apiFetch(endpoint) {
+        const res = await fetch(GATEWAY_URL + endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+            // Read the error message from the backend if possible
+            const errorText = await res.text().catch(() => "Unknown Error");
+            console.error("API Error:", endpoint, res.status, errorText);
+            throw new Error(`Server Error (${res.status}): ${errorText}`);
+        }
+        return res.json();
+    }
 
-    async function fetchTimetable() {
+    // --- 4. Main Load Logic ---
+    async function loadTimetable() {
+        const container = document.getElementById('timetable-container');
+
         try {
-            const response = await fetch(`${GATEWAY_URL}/api/timetable/student/${STUDENT_ID}`, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` } // Auth Header
+            // A. Fetch Timetable
+            // This is where "Failed to fetch" usually happens if Backend is broken
+            const slots = await apiFetch(`/api/timetable/student/${userId}`);
+
+            if (!slots || slots.length === 0) {
+                container.innerHTML = `<div class="col-12"><div class="alert alert-info text-center">🎉 No classes scheduled for this week!</div></div>`;
+                return;
+            }
+
+            // B. Fetch Helpers (Trainers & Courses)
+            const [trainers, courses] = await Promise.all([
+                apiFetch("/api/users/trainers"),
+                apiFetch("/api/courses")
+            ]);
+
+            // Flatten modules for easy lookup
+            let allModules = [];
+            for (const course of courses) {
+                try {
+                    const mods = await apiFetch(`/api/courses/${course.id}/modules`);
+                    mods.forEach(m => {
+                        m.courseName = course.courseName;
+                        allModules.push(m);
+                    });
+                } catch (e) { console.warn("Skipping modules for course " + course.id); }
+            }
+
+            // C. Render
+            container.innerHTML = "";
+            const days = { "MONDAY": 1, "TUESDAY": 2, "WEDNESDAY": 3, "THURSDAY": 4, "FRIDAY": 5, "SATURDAY": 6, "SUNDAY": 7 };
+            slots.sort((a, b) => (days[a.dayOfWeek] - days[b.dayOfWeek]) || a.startTime.localeCompare(b.startTime));
+
+            slots.forEach(slot => {
+                const trainer = trainers.find(t => t.id === slot.trainerId);
+                const module = allModules.find(m => m.id === slot.moduleId);
+
+                const trainerName = trainer ? trainer.username : `Trainer #${slot.trainerId}`;
+                const moduleName = module ? module.moduleName : `Module #${slot.moduleId}`;
+                const courseName = module ? module.courseName : "Course";
+
+                const card = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card p-3 mb-4 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="text-primary mb-0">${slot.dayOfWeek}</h5>
+                            <span class="badge bg-light text-dark border">${slot.startTime.substring(0,5)} - ${slot.endTime.substring(0,5)}</span>
+                        </div>
+                        <h6 class="fw-bold">${moduleName}</h6>
+                        <p class="text-muted small mb-2"><i class="bi bi-book"></i> ${courseName}</p>
+                        <hr>
+                        <div class="d-flex align-items-center">
+                            <span class="text-secondary fw-medium">👤 ${trainerName}</span>
+                        </div>
+                    </div>
+                </div>`;
+                container.innerHTML += card;
             });
 
-            if (!response.ok) throw new Error("Failed to fetch");
-
-            const slots = await response.json();
-            renderTimetable(slots);
         } catch (error) {
-            document.getElementById('timetable-container').innerHTML = 
-                `<div class="alert alert-danger text-center">Error loading timetable. Ensure backend is running.</div>`;
-        }
-    }
-
-    function renderTimetable(slots) {
-        const container = document.getElementById('timetable-container');
-        container.innerHTML = "";
-
-        if (slots.length === 0) {
-            container.innerHTML = `<div class="alert alert-warning text-center">No classes scheduled.</div>`;
-            return;
-        }
-
-        // Sort by Day (Mon-Sun)
-        const days = { "MONDAY": 1, "TUESDAY": 2, "WEDNESDAY": 3, "THURSDAY": 4, "FRIDAY": 5, "SATURDAY": 6, "SUNDAY": 7 };
-        slots.sort((a, b) => days[a.dayOfWeek] - days[b.dayOfWeek] || a.startTime.localeCompare(b.startTime));
-
-        slots.forEach(slot => {
-            const card = `
-                <div class="col-md-4">
-                    <div class="card p-3 mb-3 shadow-sm">
-                        <h5 class="text-primary">${slot.dayOfWeek}</h5>
-                        <h6 class="text-muted">⏰ ${slot.startTime} - ${slot.endTime}</h6>
-                        <hr>
-                        <p class="mb-1"><strong>Module ID:</strong> ${slot.moduleId}</p>
-                        <p class="mb-0"><strong>Trainer ID:</strong> ${slot.trainerId}</p>
+            console.error(error);
+            container.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-danger text-center">
+                        ❌ <strong>Failed to load data.</strong><br>
+                        <small>${error.message}</small><br>
+                        <small class="text-muted">Check if Schedule and Enrollment services are running.</small>
                     </div>
-                </div>
-            `;
-            container.innerHTML += card;
-        });
+                </div>`;
+        }
     }
 
-    fetchTimetable();
+    loadTimetable();
 </script>
+
 </body>
 </html>

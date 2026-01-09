@@ -1,10 +1,10 @@
 package com.nexanova.user_service.entity;
 
+import com.opencsv.bean.CsvBindByName;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 
 @Entity
 @Table(name="users")
@@ -17,15 +17,19 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,unique = true)
+    // Added CsvBindByName to ensure CSV columns map correctly
+    @CsvBindByName(column = "username")
+    @Column(nullable = false, unique = true)
     private String username;
 
+    @CsvBindByName(column = "password")
     @Column(nullable = false)
     private String password;
 
+    @CsvBindByName(column = "role")
     @Column(nullable = false)
     private String role;
 
-    private String fullName ;
-
+    @CsvBindByName(column = "fullName")
+    private String fullName;
 }
